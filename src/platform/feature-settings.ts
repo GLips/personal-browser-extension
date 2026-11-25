@@ -13,6 +13,12 @@ export const featureCatalog: FeatureInfo[] = [
     title: "Gmail natural-language snooze",
     description: 'Type "tomorrow 9am" into Gmail\'s snooze menu.',
   },
+  {
+    id: "videoSpeed",
+    title: "Video speed",
+    description:
+      "A floating speed control on any page with video or audio; Auto evens out fast and slow speakers.",
+  },
 ];
 
 function defineFeatureEnabledItem(id: FeatureId) {
