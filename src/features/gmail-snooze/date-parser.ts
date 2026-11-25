@@ -1,33 +1,25 @@
 import * as chrono from "chrono-node";
 
-export interface ParseResult {
-  date: Date;
-  text: string;
-}
+export type SnoozeParse =
+  | { kind: "empty" }
+  | { kind: "unreadable" }
+  | { kind: "past"; date: Date }
+  | { kind: "ok"; date: Date };
 
-export function parseSnoozeDate(input: string): ParseResult | null {
-  const results = chrono.parse(input, new Date(), { forwardDate: true });
+// Gmail's own presets ("Tomorrow", "Next week") snooze until 8:00 AM.
+const DEFAULT_HOUR = 8;
 
-  if (results.length === 0 || !results[0]) {
-    return null;
-  }
+export function parseSnoozeInput(input: string, now = new Date()): SnoozeParse {
+  const text = input.trim();
+  if (!text) return { kind: "empty" };
 
-  // Use the first result
-  const result = results[0];
+  const [result] = chrono.parse(text, now, { forwardDate: true });
+  if (!result) return { kind: "unreadable" };
+
   const date = result.start.date();
-
-  // Validate that the date is in the future
-  if (date < new Date()) {
-    // If it's in the past but close (e.g. "9am" when it's 10am), chrono might default to today.
-    // forwardDate: true usually handles this by pushing to tomorrow, but let's be safe.
-    // If it's truly in the past, we might want to reject it or let the UI show an error.
-    // For now, let's just return it and let the validation logic decide,
-    // but the PRD says "NL parses to a past date -> show error".
-    return null;
+  // "friday" alone means Friday morning, not Friday noon (chrono's default).
+  if (!result.start.isCertain("hour")) {
+    date.setHours(DEFAULT_HOUR, 0, 0, 0);
   }
-
-  return {
-    date: date,
-    text: result.text,
-  };
+  return date > now ? { kind: "ok", date } : { kind: "past", date };
 }

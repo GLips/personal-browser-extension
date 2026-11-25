@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { formatDateForGmail, formatTimeForGmail } from "./modal-handler";
+import { formatDateForGmail, formatTimeForGmail } from "./gmail-format";
 
 describe("formatDateForGmail", () => {
   const targetDate = new Date(2026, 0, 10); // Jan 10, 2026
@@ -23,7 +23,6 @@ describe("formatDateForGmail", () => {
     expect(formatDateForGmail(targetDate, "")).toBe("Jan 10, 2026");
   });
 
-  // New cases that might fail currently
   it("should match dot format dd.MM.yyyy", () => {
     const original = "01.01.2025";
     expect(formatDateForGmail(targetDate, original)).toBe("10.01.2026");
