@@ -224,7 +224,9 @@ export class VideoSpeedSession {
       );
     };
     // Time saved: media time played minus wall time spent, sampled once a
-    // second. A tick spanning a seek is dropped rather than counted.
+    // second. A tick spanning a seek is dropped rather than counted. A
+    // skip-back replay re-covers media already counted, so it gains nothing
+    // and its wall time counts against the total.
     let last = { media: media.currentTime, wall: performance.now() };
     let seeked = false;
     const savedTimer = window.setInterval(() => {
@@ -235,7 +237,7 @@ export class VideoSpeedSession {
         (media.playbackRate !== 1 || this.speed.peek() !== 1);
       if (counts) {
         const saved = savedOverTick(
-          now.media - last.media,
+          this.replaying.peek() ? 0 : now.media - last.media,
           (now.wall - last.wall) / 1000,
         );
         this.savedThisVideo.value += saved;

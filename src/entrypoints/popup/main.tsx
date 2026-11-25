@@ -191,7 +191,7 @@ function TimeSaved({ snapshot }: { snapshot: VideoSpeedSnapshot }) {
     <div class="saved">
       {endsIn && <div>{endsIn}</div>}
       <div>
-        Saved {formatDuration(snapshot.savedThisVideo)} on this video ·{" "}
+        Saved {formatClock(snapshot.savedThisVideo)} on this video ·{" "}
         {formatDuration(today)} today ·{" "}
         {formatDuration(totals?.allTimeSeconds ?? 0)} all time
       </div>

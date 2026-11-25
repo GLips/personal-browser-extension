@@ -2,7 +2,8 @@ import { storage } from "wxt/utils/storage";
 
 /**
  * Time saved is media time played minus wall time spent, so it counts
- * silence boosts and replays alike (a slowed replay below 1× would subtract).
+ * silence boosts. A skip-back replay counts only its wall time, as a cost:
+ * at 1× you likely wouldn't have needed it.
  * Totals live in sync storage; a page batches its seconds and flushes them
  * now and then, since sync storage rate-limits writes.
  */
@@ -71,11 +72,14 @@ export function formatDuration(seconds: number): string {
   return `${sign}${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
-/** "12:30" or "1:02:05". */
+/** "12:30" or "1:02:05"; negative values get a leading minus. */
 export function formatClock(seconds: number): string {
-  const s = Math.max(0, Math.round(seconds));
+  const sign = seconds <= -0.5 ? "−" : "";
+  const s = Math.round(Math.abs(seconds));
   const pad = (n: number) => String(n).padStart(2, "0");
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  return h > 0 ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`;
+  return h > 0
+    ? `${sign}${h}:${pad(m)}:${pad(s % 60)}`
+    : `${sign}${m}:${pad(s % 60)}`;
 }

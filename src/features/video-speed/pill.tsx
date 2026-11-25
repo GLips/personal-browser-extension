@@ -12,7 +12,7 @@ import {
   SPEED_STEP,
   type SpeedMode,
 } from "./settings";
-import { formatDuration } from "./time-saved";
+import { formatClock } from "./time-saved";
 
 const DRAG_THRESHOLD_PX = 4;
 
@@ -255,8 +255,8 @@ function RelativeStatus({ session }: { session: VideoSpeedSession }) {
 
 function SavedLine({ session }: { session: VideoSpeedSession }) {
   const saved = session.savedThisVideo.value;
-  if (saved < 30) return null;
-  return <div class="status saved">Saved {formatDuration(saved)}</div>;
+  if (Math.abs(saved) < 0.5) return null;
+  return <div class="status saved">Saved {formatClock(saved)}</div>;
 }
 
 function dotClass(mode: SpeedMode, status: DetectionStatus): string {
