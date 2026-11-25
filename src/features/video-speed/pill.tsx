@@ -4,6 +4,7 @@ import {
   useSignalEffect,
 } from "@preact/signals";
 import { useRef } from "preact/hooks";
+import { SKIP_SECONDS } from "./catch-up";
 import type { DetectionStatus, VideoSpeedSession } from "./session";
 import { type PillPosition, SPEED_CHOICES, type SpeedMode } from "./settings";
 
@@ -97,6 +98,7 @@ export function VideoSpeedPill(props: PillProps) {
   const speed = session.speed.value;
   const rate = session.playbackRate.value;
   const status = session.status.value;
+  const replaying = session.replaying.value;
   const dot = <span class={`dot ${dotClass(mode, status)}`} />;
 
   if (collapsed.value) {
@@ -124,9 +126,30 @@ export function VideoSpeedPill(props: PillProps) {
         <span class="grip" title="Drag to move" onPointerDown={onPointerDown}>
           ⠿
         </span>
-        <span class="rate" title="Playing at">
+        <button
+          type="button"
+          class="skip"
+          title={`Back ${SKIP_SECONDS}s, replayed slower with captions`}
+          onClick={() => session.skip(-SKIP_SECONDS)}
+        >
+          ⟲{SKIP_SECONDS}
+        </button>
+        <span
+          class={replaying ? "rate replaying" : "rate"}
+          title={
+            replaying ? "Replaying slower until you catch up" : "Playing at"
+          }
+        >
           {formatRate(rate)}
         </span>
+        <button
+          type="button"
+          class="skip"
+          title={`Forward ${SKIP_SECONDS}s`}
+          onClick={() => session.skip(SKIP_SECONDS)}
+        >
+          {SKIP_SECONDS}⟳
+        </button>
         <span
           class="mode"
           title={

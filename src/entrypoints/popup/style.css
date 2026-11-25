@@ -23,6 +23,9 @@ main {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+.rate.replaying {
+  color: #ff7a2f;
+}
 .detail {
   opacity: 0.75;
   font-size: 12px;
@@ -74,4 +77,11 @@ button:hover {
   align-items: center;
   font-size: 11px;
   opacity: 0.7;
+}
+.skips {
+  display: flex;
+  gap: 5px;
+}
+.skips button {
+  flex: 1;
 }

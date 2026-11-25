@@ -77,6 +77,14 @@ button:focus-visible {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+.rate.replaying {
+  color: #ffb27a;
+}
+.skip {
+  padding: 3px 5px;
+  font-size: 11px;
+  opacity: 0.85;
+}
 .collapse {
   margin-left: auto;
 }

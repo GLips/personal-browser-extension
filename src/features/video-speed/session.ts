@@ -5,12 +5,21 @@ import {
   tapMediaAudio,
 } from "./audio-tap";
 import {
+  advanceCatchUp,
+  CATCH_UP_SCALE,
+  type CatchUp,
+  catchUpRate,
+  startCatchUp,
+} from "./catch-up";
+import {
   clampRate,
   MIN_CONFIDENCE,
   nextPlaybackRate,
+  type RateControllerInput,
   smoothSpeakerRate,
   targetPlaybackRate,
 } from "./rate-controller";
+import { showCaptionsDuringReplay } from "./replay-captions";
 import {
   HARD_MAX_RATE,
   type SpeedMode,
@@ -55,6 +64,12 @@ export class VideoSpeedSession {
   readonly speakerRate = signal<number | undefined>(undefined);
   readonly confidence = signal(0);
   readonly playbackRate = signal(1);
+  /** The stretch a skip back is replaying, if any. */
+  readonly catchUp = signal<CatchUp | undefined>(undefined);
+  // At 1× a replay changes nothing: native playback is already the floor.
+  readonly replaying = computed(
+    () => this.catchUp.value !== undefined && this.speed.value !== 1,
+  );
 
   private tap: AudioTap | undefined;
   private tappedMedia: HTMLMediaElement | undefined;
@@ -80,8 +95,16 @@ export class VideoSpeedSession {
           this.mode.value,
           this.speed.value,
           this.prefs.value,
+          this.replaying.value,
         ),
       ),
+      // Captions follow the replay: on when it starts, restored when it ends
+      // (caught up, cancelled by a speed change, or the session disposed).
+      effect(() => {
+        const media = this.media.peek();
+        if (!this.replaying.value || !media) return;
+        return showCaptionsDuringReplay(media);
+      }),
       listen(document, "visibilitychange", () => this.refreshLoops()),
       // Autoplay policy: a context created without a gesture stays
       // suspended until the user next clicks or types on the page.
@@ -101,6 +124,8 @@ export class VideoSpeedSession {
       this.fixedOverride.value = patch.fixedOverride;
     }
     if (patch.speed !== undefined) {
+      // A new speed is a fresh choice; it ends any skip-back replay.
+      this.catchUp.value = undefined;
       const speed = round2(
         clampRate(patch.speed, { minRate: 0.25, maxRate: HARD_MAX_RATE }),
       );
@@ -111,6 +136,18 @@ export class VideoSpeedSession {
         void videoSpeedPrefsItem.setValue(prefs);
       }
     }
+  }
+
+  /** Jumps by `seconds`; a jump back replays that stretch slower. */
+  skip(seconds: number) {
+    const media = this.media.peek();
+    if (!media) return;
+    const end = Number.isFinite(media.duration) ? media.duration : Infinity;
+    const from = media.currentTime;
+    const target = Math.min(end, Math.max(0, from + seconds));
+    media.currentTime = target;
+    this.catchUp.value =
+      seconds < 0 ? startCatchUp(this.catchUp.peek(), from, target) : undefined;
   }
 
   /** Called from a click on the page, which lets a suspended context start. */
@@ -124,12 +161,14 @@ export class VideoSpeedSession {
     // A new video in the same element: new speaker, new audio tracks, and
     // sites often reset the rate. Start over.
     const onNewSource = () => {
+      this.catchUp.value = undefined;
       this.stopDetection();
       this.applyControl(
         media,
         this.mode.peek(),
         this.speed.peek(),
         this.prefs.peek(),
+        false,
       );
     };
     const unlisten = [
@@ -139,6 +178,11 @@ export class VideoSpeedSession {
       listen(media, "play", () => this.refreshLoops()),
       listen(media, "pause", () => this.refreshLoops()),
       listen(media, "loadeddata", onNewSource),
+      listen(media, "timeupdate", () => {
+        const state = this.catchUp.peek();
+        if (state)
+          this.catchUp.value = advanceCatchUp(state, media.currentTime);
+      }),
     ];
     return () => {
       for (const off of unlisten) off();
@@ -150,6 +194,7 @@ export class VideoSpeedSession {
     mode: SpeedMode,
     speed: number,
     prefs: VideoSpeedPrefs,
+    replaying: boolean,
   ) {
     if (!media) {
       this.stopDetection();
@@ -159,20 +204,29 @@ export class VideoSpeedSession {
       this.stopDetection();
       // Fixed is exactly what was picked; the relative-mode clamp range
       // doesn't apply.
-      if (this.touched) this.setRate(speed);
+      if (this.touched) {
+        this.setRate(
+          replaying ? catchUpRate(speed * CATCH_UP_SCALE, speed) : speed,
+        );
+      }
       return;
     }
     this.startDetection(media);
-    // A new speed is the user's intent: jump straight to it, unstepped.
+    // A new speed, or a replay starting or ending, is the user's intent:
+    // jump straight to it, unstepped.
     this.setRate(
-      targetPlaybackRate({
-        ...prefs,
-        speed,
-        currentRate: media.playbackRate,
-        speakerRate: this.speakerRate.peek() ?? 0,
-        confidence: this.confidence.peek(),
-        tickSeconds: 1,
-      }),
+      this.relativeRate(
+        {
+          ...prefs,
+          speed,
+          currentRate: media.playbackRate,
+          speakerRate: this.speakerRate.peek() ?? 0,
+          confidence: this.confidence.peek(),
+          tickSeconds: 1,
+        },
+        targetPlaybackRate,
+        replaying,
+      ),
     );
   }
 
@@ -279,14 +333,31 @@ export class VideoSpeedSession {
     );
     this.speakerRate.value = speakerRate;
     this.setRate(
-      nextPlaybackRate({
-        ...this.prefs.peek(),
-        speed: this.speed.peek(),
-        currentRate: media.playbackRate,
-        speakerRate,
-        confidence: estimate.confidence,
-        tickSeconds: CONTROL_MS / 1000,
-      }),
+      this.relativeRate(
+        {
+          ...this.prefs.peek(),
+          speed: this.speed.peek(),
+          currentRate: media.playbackRate,
+          speakerRate,
+          confidence: estimate.confidence,
+          tickSeconds: CONTROL_MS / 1000,
+        },
+        nextPlaybackRate,
+        this.replaying.peek(),
+      ),
+    );
+  }
+
+  /** Relative rate, slowed (but not below 1×) while a skip back replays. */
+  private relativeRate(
+    input: RateControllerInput,
+    pick: (input: RateControllerInput) => number,
+    replaying: boolean,
+  ): number {
+    if (!replaying) return pick(input);
+    return catchUpRate(
+      pick({ ...input, speed: input.speed * CATCH_UP_SCALE }),
+      targetPlaybackRate(input),
     );
   }
 

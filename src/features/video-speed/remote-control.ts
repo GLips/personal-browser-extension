@@ -20,6 +20,7 @@ export type VideoSpeedSnapshot = {
   fixedOverride: boolean;
   quickSpeed: number;
   playbackRate: number;
+  replaying: boolean;
   playing: boolean;
   status: DetectionStatus;
   speakerRate: number | undefined;
@@ -33,7 +34,8 @@ export type VideoSpeedRequest =
       type: "videoSpeed/set";
       sessionId: string;
       patch: SpeedControlPatch;
-    };
+    }
+  | { type: "videoSpeed/skip"; sessionId: string; seconds: number };
 
 const PAUSED_FRAME_DELAY_MS = 150;
 
@@ -48,6 +50,7 @@ export function snapshotSession(
     fixedOverride: session.fixedOverride.peek(),
     quickSpeed: session.prefs.peek().quickSpeed,
     playbackRate: session.playbackRate.peek(),
+    replaying: session.replaying.peek(),
     playing: media ? !media.paused : false,
     status: session.status.peek(),
     speakerRate: session.speakerRate.peek(),
@@ -83,6 +86,7 @@ export function serveRemoteControl(
     }
     if (request.sessionId !== session.id) return false;
     if (request.type === "videoSpeed/set") session.setControl(request.patch);
+    if (request.type === "videoSpeed/skip") session.skip(request.seconds);
     sendResponse(snapshotSession(session));
     return false;
   };

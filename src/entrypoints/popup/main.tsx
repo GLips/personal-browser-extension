@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { browser } from "wxt/browser";
+import { SKIP_SECONDS } from "../../features/video-speed/catch-up";
 import { formatRate } from "../../features/video-speed/pill";
 import {
   requestVideoSpeed,
@@ -56,6 +57,14 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
     });
     if (next) setSnapshot(next);
   };
+  const skip = async (seconds: number) => {
+    const next = await requestVideoSpeed(tabId, {
+      type: "videoSpeed/skip",
+      sessionId: snapshot.sessionId,
+      seconds,
+    });
+    if (next) setSnapshot(next);
+  };
   const { speed, quickSpeed } = snapshot;
   const choices = SPEED_CHOICES.includes(quickSpeed)
     ? SPEED_CHOICES
@@ -63,8 +72,22 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
 
   return (
     <main>
-      <div class="rate">{formatRate(snapshot.playbackRate)}</div>
+      <div class={snapshot.replaying ? "rate replaying" : "rate"}>
+        {formatRate(snapshot.playbackRate)}
+      </div>
       <div class="detail">{detailText(snapshot)}</div>
+      <div class="skips">
+        <button
+          type="button"
+          title="Replayed slower, with captions where available"
+          onClick={() => skip(-SKIP_SECONDS)}
+        >
+          ⟲ Back {SKIP_SECONDS}s
+        </button>
+        <button type="button" onClick={() => skip(SKIP_SECONDS)}>
+          Forward {SKIP_SECONDS}s ⟳
+        </button>
+      </div>
       {speed === 1 && (
         <button
           type="button"
@@ -116,6 +139,11 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
 }
 
 function detailText(s: VideoSpeedSnapshot): string {
+  const text = baseDetailText(s);
+  return s.replaying ? `${text} · replaying slower` : text;
+}
+
+function baseDetailText(s: VideoSpeedSnapshot): string {
   if (s.speed === 1) return "Normal speed";
   if (s.mode === "fixed") return `Fixed at ${formatRate(s.speed)}`;
   const target = `Relative ${formatRate(s.speed)}`;
