@@ -254,9 +254,13 @@ function RelativeStatus({ session }: { session: VideoSpeedSession }) {
 }
 
 function SavedLine({ session }: { session: VideoSpeedSession }) {
-  const saved = session.savedThisVideo.value;
-  if (Math.abs(saved) < 0.5) return null;
-  return <div class="status saved">Saved {formatClock(saved)}</div>;
+  const { watched, saved } = session.thisVideo.value;
+  if (watched < 0.5) return null;
+  return (
+    <div class="status saved">
+      Watched {formatClock(watched)} · Saved {formatClock(saved)}
+    </div>
+  );
 }
 
 function dotClass(mode: SpeedMode, status: DetectionStatus): string {

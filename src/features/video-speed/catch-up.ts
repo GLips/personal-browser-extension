@@ -1,18 +1,24 @@
 /**
  * Skip-back replay: after jumping back, the replayed stretch plays slower so
- * the missed bit is easier to catch, then normal speed resumes once playback
- * passes the point where the user skipped from. Pure; the session feeds it
+ * the missed bit is easier to catch. It lingers LINGER_SECONDS past the point
+ * the user skipped from (they rarely skip at the exact moment the speech got
+ * hard to follow), then normal speed resumes. Pure; the session feeds it
  * skips and media times.
  */
 
 export const SKIP_SECONDS = 10;
 /** How much slower the replayed stretch plays. */
 export const CATCH_UP_SCALE = 0.75;
+/** How long the slow replay keeps going past where the user skipped from. */
+export const LINGER_SECONDS = 10;
 // timeupdate lands a little before the seek target on some players.
 const SEEK_TOLERANCE_SECONDS = 0.5;
 
-/** Media times [from, until): the stretch being replayed. */
-export type CatchUp = { from: number; until: number };
+/**
+ * Media times: the replay runs over [from, until). `rejoin` is the furthest
+ * point reached before skipping back; media before it is being re-watched.
+ */
+export type CatchUp = { from: number; rejoin: number; until: number };
 
 /**
  * A skip back from `currentTime` to `target`. Repeated skips keep the
@@ -23,10 +29,8 @@ export function startCatchUp(
   currentTime: number,
   target: number,
 ): CatchUp {
-  return {
-    from: target,
-    until: Math.max(previous?.until ?? 0, currentTime),
-  };
+  const rejoin = Math.max(previous?.rejoin ?? 0, currentTime);
+  return { from: target, rejoin, until: rejoin + LINGER_SECONDS };
 }
 
 /**
@@ -41,6 +45,19 @@ export function advanceCatchUp(
   if (currentTime >= state.until) return undefined;
   if (currentTime < state.from - SEEK_TOLERANCE_SECONDS) return undefined;
   return state;
+}
+
+/**
+ * Media seconds over a tick that are new to the viewer: during a replay,
+ * only what lies past `rejoin` counts.
+ */
+export function newMediaSeconds(
+  state: CatchUp | undefined,
+  lastTime: number,
+  currentTime: number,
+): number {
+  if (!state) return currentTime - lastTime;
+  return Math.max(0, currentTime - Math.max(lastTime, state.rejoin));
 }
 
 /**

@@ -15,12 +15,13 @@ import {
   SPEED_STEP,
 } from "../../features/video-speed/settings";
 import {
-  daySecondsFor,
   formatClock,
   formatDuration,
   localDay,
-  type TimeSavedTotals,
-  timeSavedItem,
+  todaysWatchSeconds,
+  type WatchSeconds,
+  type WatchTotals,
+  watchTotalsItem,
 } from "../../features/video-speed/time-saved";
 import "./style.css";
 
@@ -94,7 +95,7 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
         )}
       </div>
       <div class="detail">{detailText(snapshot)}</div>
-      <TimeSaved snapshot={snapshot} />
+      <WatchStats snapshot={snapshot} />
       <div class="skips">
         <button
           type="button"
@@ -174,11 +175,11 @@ function shownRate(s: VideoSpeedSnapshot): number {
   return s.boosting ? s.speechRate : s.playbackRate;
 }
 
-function TimeSaved({ snapshot }: { snapshot: VideoSpeedSnapshot }) {
-  const [totals, setTotals] = useState<TimeSavedTotals | undefined>();
+function WatchStats({ snapshot }: { snapshot: VideoSpeedSnapshot }) {
+  const [totals, setTotals] = useState<WatchTotals | undefined>();
   useEffect(() => {
-    void timeSavedItem.getValue().then(setTotals);
-    return timeSavedItem.watch(setTotals);
+    void watchTotalsItem.getValue().then(setTotals);
+    return watchTotalsItem.watch(setTotals);
   }, []);
   const remaining = snapshot.duration - snapshot.currentTime;
   const endsIn = Number.isFinite(remaining)
@@ -186,15 +187,22 @@ function TimeSaved({ snapshot }: { snapshot: VideoSpeedSnapshot }) {
     : undefined;
   // The page flushes its seconds every 15 s; until then they're only in
   // the snapshot's per-video count, so today/all-time can trail slightly.
-  const today = totals ? daySecondsFor(totals, localDay()) : 0;
+  const today = totals && todaysWatchSeconds(totals, localDay());
+  const line = (label: string, s: WatchSeconds | undefined, clock: boolean) => {
+    const format = clock ? formatClock : formatDuration;
+    return (
+      <div>
+        {label}: watched {format(s?.watched ?? 0)} · saved{" "}
+        {format(s?.saved ?? 0)}
+      </div>
+    );
+  };
   return (
     <div class="saved">
       {endsIn && <div>{endsIn}</div>}
-      <div>
-        Saved {formatClock(snapshot.savedThisVideo)} on this video ·{" "}
-        {formatDuration(today)} today ·{" "}
-        {formatDuration(totals?.allTimeSeconds ?? 0)} all time
-      </div>
+      {line("This video", snapshot.thisVideo, true)}
+      {line("Today", today, false)}
+      {line("All time", totals?.allTime, false)}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   CATCH_UP_SCALE,
   type CatchUp,
   catchUpRate,
+  newMediaSeconds,
   startCatchUp,
 } from "./catch-up";
 import {
@@ -35,7 +36,13 @@ import {
   silenceRate,
 } from "./silence-gate";
 import { SyllableRateEstimator } from "./syllable-rate";
-import { flushTimeSaved, savedOverTick } from "./time-saved";
+import {
+  addWatchSeconds,
+  flushWatchSeconds,
+  noWatchSeconds,
+  savedOverTick,
+  type WatchSeconds,
+} from "./time-saved";
 
 export type SpeedControlPatch = {
   speed?: number;
@@ -85,8 +92,8 @@ export class VideoSpeedSession {
   /** True while a pause is being played at the silence rate. */
   readonly boosting = signal(false);
   readonly skipSilences = signal(skipSilencesItem.fallback);
-  /** Seconds saved on the current video by playing it faster than 1×. */
-  readonly savedThisVideo = signal(0);
+  /** Seconds spent watching the current video, and saved by speeding it. */
+  readonly thisVideo = signal<WatchSeconds>(noWatchSeconds);
   /** The stretch a skip back is replaying, if any. */
   readonly catchUp = signal<CatchUp | undefined>(undefined);
   // At 1× a replay changes nothing: native playback is already the floor.
@@ -98,7 +105,7 @@ export class VideoSpeedSession {
   private tappedMedia: HTMLMediaElement | undefined;
   private estimator = new SyllableRateEstimator();
   private gate: SilenceGate = createSilenceGate();
-  private unflushedSaved = 0;
+  private unflushed: WatchSeconds = noWatchSeconds;
   private pollTimer: number | undefined;
   private controlTimer: number | undefined;
   private lastPoll = 0;
@@ -212,7 +219,7 @@ export class VideoSpeedSession {
     const onNewSource = () => {
       this.catchUp.value = undefined;
       this.flushSaved();
-      this.savedThisVideo.value = 0;
+      this.thisVideo.value = noWatchSeconds;
       this.stopDetection();
       this.applyControl(
         media,
@@ -223,25 +230,30 @@ export class VideoSpeedSession {
         this.skipSilences.peek(),
       );
     };
-    // Time saved: media time played minus wall time spent, sampled once a
-    // second. A tick spanning a seek is dropped rather than counted. A
-    // skip-back replay re-covers media already counted, so it gains nothing
-    // and its wall time counts against the total.
+    // Watched and saved, sampled once a second; see time-saved.ts. A tick
+    // spanning a seek is dropped rather than counted.
     let last = { media: media.currentTime, wall: performance.now() };
     let seeked = false;
     const savedTimer = window.setInterval(() => {
       const now = { media: media.currentTime, wall: performance.now() };
-      const counts =
-        !seeked &&
-        !media.paused &&
-        (media.playbackRate !== 1 || this.speed.peek() !== 1);
-      if (counts) {
-        const saved = savedOverTick(
-          this.replaying.peek() ? 0 : now.media - last.media,
-          (now.wall - last.wall) / 1000,
-        );
-        this.savedThisVideo.value += saved;
-        this.unflushedSaved += saved;
+      if (!seeked && !media.paused) {
+        const wall = (now.wall - last.wall) / 1000;
+        const sped = media.playbackRate !== 1 || this.speed.peek() !== 1;
+        const tick: WatchSeconds = {
+          watched: wall,
+          saved: sped
+            ? savedOverTick(
+                newMediaSeconds(
+                  this.replaying.peek() ? this.catchUp.peek() : undefined,
+                  last.media,
+                  now.media,
+                ),
+                wall,
+              )
+            : 0,
+        };
+        this.thisVideo.value = addWatchSeconds(this.thisVideo.peek(), tick);
+        this.unflushed = addWatchSeconds(this.unflushed, tick);
       }
       last = now;
       seeked = false;
@@ -427,9 +439,9 @@ export class VideoSpeedSession {
   }
 
   private flushSaved() {
-    const seconds = this.unflushedSaved;
-    this.unflushedSaved = 0;
-    void flushTimeSaved(seconds);
+    const seconds = this.unflushed;
+    this.unflushed = noWatchSeconds;
+    void flushWatchSeconds(seconds);
   }
 
   private control() {

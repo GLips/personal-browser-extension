@@ -1,23 +1,28 @@
 import { storage } from "wxt/utils/storage";
 
 /**
- * Time saved is media time played minus wall time spent, so it counts
- * silence boosts. A skip-back replay counts only its wall time, as a cost:
- * at 1× you likely wouldn't have needed it.
+ * Watched is wall time spent playing, at any speed. Saved is media time
+ * played minus wall time spent, so it counts silence boosts; a skip-back
+ * replay gains nothing until it passes the rejoin point, so its time counts
+ * as a cost (at 1× you likely wouldn't have needed it).
  * Totals live in sync storage; a page batches its seconds and flushes them
  * now and then, since sync storage rate-limits writes.
  */
 
-export type TimeSavedTotals = {
-  allTimeSeconds: number;
-  /** Local date the day total belongs to, as YYYY-MM-DD. */
+export type WatchSeconds = { watched: number; saved: number };
+
+export type WatchTotals = {
+  /** Local date the day totals belong to, as YYYY-MM-DD. */
   day: string;
-  daySeconds: number;
+  today: WatchSeconds;
+  allTime: WatchSeconds;
 };
 
-export const timeSavedItem = storage.defineItem<TimeSavedTotals>(
-  "sync:videoSpeed.timeSaved",
-  { fallback: { allTimeSeconds: 0, day: "", daySeconds: 0 } },
+export const noWatchSeconds: WatchSeconds = { watched: 0, saved: 0 };
+
+export const watchTotalsItem = storage.defineItem<WatchTotals>(
+  "sync:videoSpeed.watchTotals",
+  { fallback: { day: "", today: noWatchSeconds, allTime: noWatchSeconds } },
 );
 
 // A tick whose media time moved implausibly (a seek, a stall, a new source)
@@ -34,21 +39,31 @@ export function savedOverTick(
   return mediaSeconds - wallSeconds;
 }
 
-export function addTimeSaved(
-  totals: TimeSavedTotals,
-  seconds: number,
+export function addWatchSeconds(
+  a: WatchSeconds,
+  b: WatchSeconds,
+): WatchSeconds {
+  return { watched: a.watched + b.watched, saved: a.saved + b.saved };
+}
+
+export function addToWatchTotals(
+  totals: WatchTotals,
+  seconds: WatchSeconds,
   today: string,
-): TimeSavedTotals {
+): WatchTotals {
   return {
-    allTimeSeconds: totals.allTimeSeconds + seconds,
     day: today,
-    daySeconds: (totals.day === today ? totals.daySeconds : 0) + seconds,
+    today: addWatchSeconds(todaysWatchSeconds(totals, today), seconds),
+    allTime: addWatchSeconds(totals.allTime, seconds),
   };
 }
 
-/** Today's total as stored, or 0 once the stored day is over. */
-export function daySecondsFor(totals: TimeSavedTotals, today: string): number {
-  return totals.day === today ? totals.daySeconds : 0;
+/** Today's totals as stored, or zero once the stored day is over. */
+export function todaysWatchSeconds(
+  totals: WatchTotals,
+  today: string,
+): WatchSeconds {
+  return totals.day === today ? totals.today : noWatchSeconds;
 }
 
 export function localDay(date = new Date()): string {
@@ -56,10 +71,10 @@ export function localDay(date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-export async function flushTimeSaved(seconds: number): Promise<void> {
-  if (Math.abs(seconds) < 0.5) return;
-  const totals = await timeSavedItem.getValue();
-  await timeSavedItem.setValue(addTimeSaved(totals, seconds, localDay()));
+export async function flushWatchSeconds(seconds: WatchSeconds): Promise<void> {
+  if (seconds.watched < 0.5 && Math.abs(seconds.saved) < 0.5) return;
+  const totals = await watchTotalsItem.getValue();
+  await watchTotalsItem.setValue(addToWatchTotals(totals, seconds, localDay()));
 }
 
 /** "45s", "3m", "1h 12m". */

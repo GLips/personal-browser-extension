@@ -5,6 +5,7 @@ import type {
   VideoSpeedSession,
 } from "./session";
 import type { SpeedMode } from "./settings";
+import type { WatchSeconds } from "./time-saved";
 
 /**
  * The toolbar popup and a page's session talk over tab messages. A message
@@ -30,7 +31,7 @@ export type VideoSpeedSnapshot = {
   /** The rate chosen for speech, which a silence boost exceeds. */
   speechRate: number;
   skipSilences: boolean;
-  savedThisVideo: number;
+  thisVideo: WatchSeconds;
   /** NaN or Infinity for live streams. */
   duration: number;
   currentTime: number;
@@ -68,7 +69,7 @@ export function snapshotSession(
     boosting: session.boosting.peek(),
     speechRate: session.speechRate.peek(),
     skipSilences: session.skipSilences.peek(),
-    savedThisVideo: session.savedThisVideo.peek(),
+    thisVideo: session.thisVideo.peek(),
     duration: media?.duration ?? Number.NaN,
     currentTime: media?.currentTime ?? 0,
   };
