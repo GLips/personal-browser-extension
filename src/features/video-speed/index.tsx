@@ -6,7 +6,7 @@ import {
 } from "wxt/utils/content-script-ui/shadow-root";
 import { trackActiveMedia } from "./media-tracker";
 import { VideoSpeedPill } from "./pill";
-import "./pill.css";
+import pillCss from "./pill.css?inline";
 import { VideoSpeedSession } from "./session";
 import { type PillState, pillStateItem } from "./settings";
 
@@ -66,6 +66,7 @@ async function mountPill(
 
   const ui = await createShadowRootUi(ctx, {
     name: "video-speed-pill",
+    css: pillCss,
     position: "inline",
     anchor: "body",
     // Keys typed into the pill must not trigger site shortcuts (YouTube's
