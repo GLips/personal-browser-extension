@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <title>Personal Browser Extension</title>
-  <rect x="4" y="4" width="120" height="120" rx="30" fill="#FF7A2F"/>
-  <rect x="22" y="38" width="84" height="14" rx="7" fill="#B15E36"/>
-  <rect x="22" y="76" width="84" height="14" rx="7" fill="#B15E36"/>
-  <circle cx="44" cy="45" r="17" fill="#1F2A44"/>
-  <circle cx="84" cy="83" r="17" fill="#FFFFFF"/>
-</svg>

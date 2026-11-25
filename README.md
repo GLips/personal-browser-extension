@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" width="96" height="96" alt="Personal Browser Extension logo: two slider knobs on an orange tile">
+  <img src="assets/logo.png" width="240" height="240" alt="Personal Browser Extension mascot: a deadpan orange hawk in wraparound sunglasses">
 </p>
 
 # Personal Browser Extension
@@ -35,7 +35,7 @@ Keep only one of the two copies enabled at a time; with both on, every feature r
 - `src/entrypoints/`: thin WXT entrypoints. Each content script declares its own match patterns and starts one feature.
 - `src/features/<name>/`: each feature's code, framework-independent where possible.
 - `src/platform/`: shared pieces, such as per-feature on/off settings synced through `chrome.storage.sync`.
-- `assets/logo.svg`: the logo master; `assets/logo-16.svg` is a pixel-fitted version for the 16 px toolbar icon. `public/icon/` holds the rendered PNGs.
+- `assets/logo.png`: the mascot master; `assets/logo-head.png` is the head-only crop used for the 16 and 32 px toolbar icons. `public/icon/` holds the rendered icon PNGs.
 
 ## Checks
 
