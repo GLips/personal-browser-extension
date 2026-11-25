@@ -1,4 +1,4 @@
-import { effect, signal } from "@preact/signals";
+import { computed, effect, signal } from "@preact/signals";
 import {
   type AudioTap,
   AudioUnavailableError,
@@ -13,10 +13,13 @@ import {
 } from "./rate-controller";
 import {
   HARD_MAX_RATE,
-  type VideoSpeedSettings,
-  videoSpeedSettingsItem,
+  type SpeedMode,
+  type VideoSpeedPrefs,
+  videoSpeedPrefsItem,
 } from "./settings";
 import { SyllableRateEstimator } from "./syllable-rate";
+
+export type SpeedControlPatch = { speed?: number; fixedOverride?: boolean };
 
 export type DetectionStatus =
   | "off"
@@ -30,14 +33,24 @@ const CONTROL_MS = 1000;
 const SILENT_SOURCE_SECONDS = 4;
 
 /**
- * Owns one page's speed control: which media it drives, the settings, and
- * the detection loop. The pill renders its signals and calls its methods.
+ * Owns one page's speed control: which media it drives, the chosen mode and
+ * speed, and the detection loop. The pill and the toolbar popup both drive
+ * it. Mode and speed live only here, so every page load starts at 1× fixed.
  */
 export class VideoSpeedSession {
+  readonly id = crypto.randomUUID();
   readonly media = signal<HTMLMediaElement | null>(null);
-  readonly settings = signal<VideoSpeedSettings>(
-    videoSpeedSettingsItem.fallback,
+  readonly prefs = signal<VideoSpeedPrefs>(videoSpeedPrefsItem.fallback);
+  readonly speed = signal(1);
+  /** Plays a non-1× speed as a plain playback rate instead of relative. */
+  readonly fixedOverride = signal(false);
+  // 1× is always true native playback; any other speed is relative unless
+  // the user asked for a plain fixed rate.
+  readonly mode = computed<SpeedMode>(() =>
+    this.speed.value === 1 || this.fixedOverride.value ? "fixed" : "relative",
   );
+  /** The pill shows only while the speed isn't 1×. */
+  readonly engaged = computed(() => this.speed.value !== 1);
   readonly status = signal<DetectionStatus>("off");
   readonly speakerRate = signal<number | undefined>(undefined);
   readonly confidence = signal(0);
@@ -50,15 +63,25 @@ export class VideoSpeedSession {
   private controlTimer: number | undefined;
   private lastPoll = 0;
   private disposers: (() => void)[] = [];
+  // Until the user picks a speed, the page's own rate is left alone (a site
+  // or its player may have set one).
+  private touched = false;
 
   async start() {
-    this.settings.value = await videoSpeedSettingsItem.getValue();
+    this.prefs.value = await videoSpeedPrefsItem.getValue();
     this.disposers.push(
-      videoSpeedSettingsItem.watch((value) => {
-        this.settings.value = value;
+      videoSpeedPrefsItem.watch((value) => {
+        this.prefs.value = value;
       }),
       effect(() => this.bindMedia(this.media.value)),
-      effect(() => this.applySettings(this.media.value, this.settings.value)),
+      effect(() =>
+        this.applyControl(
+          this.media.value,
+          this.mode.value,
+          this.speed.value,
+          this.prefs.value,
+        ),
+      ),
       listen(document, "visibilitychange", () => this.refreshLoops()),
       // Autoplay policy: a context created without a gesture stays
       // suspended until the user next clicks or types on the page.
@@ -72,13 +95,27 @@ export class VideoSpeedSession {
     for (const dispose of this.disposers) dispose();
   }
 
-  updateSettings(patch: Partial<VideoSpeedSettings>) {
-    const next = { ...this.settings.value, ...patch };
-    next.speed = round2(
-      clampRate(next.speed, { minRate: 0.25, maxRate: HARD_MAX_RATE }),
-    );
-    this.settings.value = next;
-    void videoSpeedSettingsItem.setValue(next);
+  setControl(patch: SpeedControlPatch) {
+    this.touched = true;
+    if (patch.fixedOverride !== undefined) {
+      this.fixedOverride.value = patch.fixedOverride;
+    }
+    if (patch.speed !== undefined) {
+      const speed = round2(
+        clampRate(patch.speed, { minRate: 0.25, maxRate: HARD_MAX_RATE }),
+      );
+      this.speed.value = speed;
+      if (speed !== 1 && speed !== this.prefs.peek().quickSpeed) {
+        const prefs = { ...this.prefs.peek(), quickSpeed: speed };
+        this.prefs.value = prefs;
+        void videoSpeedPrefsItem.setValue(prefs);
+      }
+    }
+  }
+
+  /** Called from a click on the page, which lets a suspended context start. */
+  startListening() {
+    this.resumeContext();
   }
 
   private bindMedia(media: HTMLMediaElement | null) {
@@ -88,7 +125,12 @@ export class VideoSpeedSession {
     // sites often reset the rate. Start over.
     const onNewSource = () => {
       this.stopDetection();
-      this.applySettings(media, this.settings.peek());
+      this.applyControl(
+        media,
+        this.mode.peek(),
+        this.speed.peek(),
+        this.prefs.peek(),
+      );
     };
     const unlisten = [
       listen(media, "ratechange", () => {
@@ -103,24 +145,29 @@ export class VideoSpeedSession {
     };
   }
 
-  private applySettings(
+  private applyControl(
     media: HTMLMediaElement | null,
-    settings: VideoSpeedSettings,
+    mode: SpeedMode,
+    speed: number,
+    prefs: VideoSpeedPrefs,
   ) {
     if (!media) {
       this.stopDetection();
       return;
     }
-    if (!settings.auto) {
+    if (mode === "fixed") {
       this.stopDetection();
-      this.setRate(clampRate(settings.speed, settings));
+      // Fixed is exactly what was picked; the relative-mode clamp range
+      // doesn't apply.
+      if (this.touched) this.setRate(speed);
       return;
     }
     this.startDetection(media);
     // A new speed is the user's intent: jump straight to it, unstepped.
     this.setRate(
       targetPlaybackRate({
-        ...settings,
+        ...prefs,
+        speed,
         currentRate: media.playbackRate,
         speakerRate: this.speakerRate.peek() ?? 0,
         confidence: this.confidence.peek(),
@@ -233,7 +280,8 @@ export class VideoSpeedSession {
     this.speakerRate.value = speakerRate;
     this.setRate(
       nextPlaybackRate({
-        ...this.settings.peek(),
+        ...this.prefs.peek(),
+        speed: this.speed.peek(),
         currentRate: media.playbackRate,
         speakerRate,
         confidence: estimate.confidence,

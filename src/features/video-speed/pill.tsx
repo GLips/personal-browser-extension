@@ -1,14 +1,17 @@
-import { useSignal, useSignalEffect } from "@preact/signals";
+import {
+  type ReadonlySignal,
+  useSignal,
+  useSignalEffect,
+} from "@preact/signals";
 import { useRef } from "preact/hooks";
 import type { DetectionStatus, VideoSpeedSession } from "./session";
-import type { PillPosition } from "./settings";
+import { type PillPosition, SPEED_CHOICES, type SpeedMode } from "./settings";
 
-const SPEED_CHIPS = [1.5, 2, 2.5, 3];
-const SPEED_STEP = 0.1;
 const DRAG_THRESHOLD_PX = 4;
 
 type PillProps = {
   session: VideoSpeedSession;
+  visible: ReadonlySignal<boolean>;
   initialPosition: PillPosition;
   initialCollapsed: boolean;
   onPositionChange: (position: PillPosition) => void;
@@ -87,21 +90,28 @@ export function VideoSpeedPill(props: PillProps) {
     props.onCollapsedChange(value);
   };
 
-  const settings = session.settings.value;
+  // Hidden by class, not unmounted: the same element stays observed, and the
+  // ResizeObserver re-places it when it reappears.
+  const hidden = props.visible.value ? "" : " hidden";
+  const mode = session.mode.value;
+  const speed = session.speed.value;
   const rate = session.playbackRate.value;
-  const setSpeed = (speed: number) => session.updateSettings({ speed });
+  const status = session.status.value;
+  const dot = <span class={`dot ${dotClass(mode, status)}`} />;
 
   if (collapsed.value) {
     return (
-      <div ref={pillRef} class="pill collapsed" onPointerDown={onPointerDown}>
+      <div
+        ref={pillRef}
+        class={`pill collapsed${hidden}`}
+        onPointerDown={onPointerDown}
+      >
         <button
           type="button"
           data-drag
           title="Video speed: drag to move, click to open"
         >
-          <span
-            class={`dot ${dotClass(settings.auto, session.status.value)}`}
-          />
+          {dot}
           {formatRate(rate)}
         </button>
       </div>
@@ -109,47 +119,25 @@ export function VideoSpeedPill(props: PillProps) {
   }
 
   return (
-    <div ref={pillRef} class="pill">
+    <div ref={pillRef} class={`pill${hidden}`}>
       <div class="row">
         <span class="grip" title="Drag to move" onPointerDown={onPointerDown}>
           ⠿
         </span>
-        <button
-          type="button"
-          class={settings.auto ? "auto on" : "auto"}
-          aria-pressed={settings.auto}
-          title="Auto: adjust speed to how fast the speaker talks"
-          onClick={() => session.updateSettings({ auto: !settings.auto })}
-        >
-          <span
-            class={`dot ${dotClass(settings.auto, session.status.value)}`}
-          />
-          Auto
-        </button>
-        <button
-          type="button"
-          title="Slower"
-          onClick={() => setSpeed(settings.speed - SPEED_STEP)}
-        >
-          −
-        </button>
+        <span class="rate" title="Playing at">
+          {formatRate(rate)}
+        </span>
         <span
-          class="speed"
+          class="mode"
           title={
-            settings.auto
-              ? "Sound like a typical speaker at this speed"
-              : "Playback speed"
+            mode === "relative"
+              ? "Relative: speed follows how fast the speaker talks"
+              : "Fixed playback rate"
           }
         >
-          {formatRate(settings.speed)}
+          {dot}
+          {mode === "relative" ? "Relative" : "Fixed"}
         </span>
-        <button
-          type="button"
-          title="Faster"
-          onClick={() => setSpeed(settings.speed + SPEED_STEP)}
-        >
-          +
-        </button>
         <button
           type="button"
           class="collapse"
@@ -160,44 +148,57 @@ export function VideoSpeedPill(props: PillProps) {
         </button>
       </div>
       <div class="row chips">
-        {SPEED_CHIPS.map((chip) => (
+        {SPEED_CHOICES.map((choice) => (
           <button
             type="button"
-            key={chip}
-            class={Math.abs(chip - settings.speed) < 0.001 ? "chip on" : "chip"}
-            onClick={() => setSpeed(chip)}
+            key={choice}
+            class={Math.abs(choice - speed) < 0.001 ? "chip on" : "chip"}
+            onClick={() => session.setControl({ speed: choice })}
           >
-            {formatRate(chip)}
+            {formatRate(choice)}
           </button>
         ))}
       </div>
-      <div class="status">{statusText(session, rate)}</div>
+      {mode === "relative" && <RelativeStatus session={session} />}
     </div>
   );
 }
 
-function statusText(session: VideoSpeedSession, rate: number): string {
-  const playing = `playing ${formatRate(rate)}`;
-  if (!session.settings.value.auto) return playing;
+function RelativeStatus({ session }: { session: VideoSpeedSession }) {
+  const speed = formatRate(session.speed.value);
   switch (session.status.value) {
     case "needs-click":
-      return "click the page to start listening";
+      return (
+        <button
+          type="button"
+          class="status listen"
+          onClick={() => session.startListening()}
+        >
+          Click to start listening
+        </button>
+      );
     case "unavailable":
-      return `can't hear this media · fixed ${playing}`;
+      return <div class="status">Can't hear this media · holding {speed}</div>;
     case "paused":
-      return `paused · ${playing}`;
+      return <div class="status">Paused · target {speed}</div>;
     case "off":
     case "listening": {
       const speaker = session.speakerRate.value;
-      if (speaker === undefined) return `listening… · ${playing}`;
+      if (speaker === undefined) {
+        return <div class="status">Listening… · target {speed}</div>;
+      }
       const confidence = Math.round(session.confidence.value * 100);
-      return `speaker ${speaker.toFixed(1)} syl/s (${confidence}%) · ${playing}`;
+      return (
+        <div class="status">
+          Speaker {speaker.toFixed(1)} syl/s ({confidence}%) · target {speed}
+        </div>
+      );
     }
   }
 }
 
-function dotClass(auto: boolean, status: DetectionStatus): string {
-  if (!auto) return "manual";
+function dotClass(mode: SpeedMode, status: DetectionStatus): string {
+  if (mode === "fixed") return "fixed";
   return status === "listening"
     ? "listening"
     : status === "unavailable"
@@ -205,7 +206,7 @@ function dotClass(auto: boolean, status: DetectionStatus): string {
       : "waiting";
 }
 
-function formatRate(rate: number): string {
+export function formatRate(rate: number): string {
   return `${Number(rate.toFixed(2))}×`;
 }
 

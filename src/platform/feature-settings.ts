@@ -17,7 +17,7 @@ export const featureCatalog: FeatureInfo[] = [
     id: "videoSpeed",
     title: "Video speed",
     description:
-      "A floating speed control on any page with video or audio; Auto evens out fast and slow speakers.",
+      "Speed up video and audio from the toolbar button. Sped-up playback follows how fast the speaker talks, so fast and slow speakers land at the same pace.",
   },
 ];
 

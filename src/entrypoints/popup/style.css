@@ -1,0 +1,77 @@
+:root {
+  color-scheme: light dark;
+  font:
+    13px / 1.4 system-ui,
+    sans-serif;
+}
+body {
+  margin: 0;
+}
+main {
+  width: 260px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.empty {
+  margin: 0;
+  opacity: 0.7;
+}
+.rate {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.detail {
+  opacity: 0.75;
+  font-size: 12px;
+}
+button {
+  font: inherit;
+  padding: 5px 9px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+button:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.quick {
+  background: #ff7a2f;
+  border-color: #ff7a2f;
+  color: #1c2340;
+  font-weight: 600;
+}
+.quick:hover {
+  background: #ff8c4a;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.chip.on {
+  background: color-mix(in srgb, #ff7a2f 30%, transparent);
+  border-color: #ff7a2f;
+}
+.adjust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.adjust span {
+  min-width: 3.2em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.override {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  opacity: 0.7;
+}

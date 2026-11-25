@@ -1,9 +1,20 @@
 import { storage } from "wxt/utils/storage";
 
-export type VideoSpeedSettings = {
-  /** Manual: the playback rate. Auto: "sound like a typical speaker at this speed". */
-  speed: number;
-  auto: boolean;
+/**
+ * Fixed: the speed is the playback rate. Relative: the speed means "sound
+ * like a typical speaker played at this speed", so the playback rate follows
+ * the detected speaker. 1× is always fixed; other speeds are relative unless
+ * the user turns on the fixed override.
+ */
+export type SpeedMode = "fixed" | "relative";
+
+/**
+ * Preferences kept across pages. The speed itself is deliberately absent:
+ * every page starts at 1× fixed, and only quickSpeed is remembered.
+ */
+export type VideoSpeedPrefs = {
+  /** The last speed other than 1× the user picked, offered as a one-tap choice. */
+  quickSpeed: number;
   /** Syllables per second the detector reads for a typical speaker at 1×. */
   typicalRate: number;
   minRate: number;
@@ -13,12 +24,14 @@ export type VideoSpeedSettings = {
 // Chrome mutes audio above 4×, which would also blind the detector.
 export const HARD_MAX_RATE = 4;
 
-export const videoSpeedSettingsItem = storage.defineItem<VideoSpeedSettings>(
-  "sync:videoSpeed.settings",
+export const SPEED_CHOICES = [1, 1.5, 2, 2.5, 3];
+export const SPEED_STEP = 0.1;
+
+export const videoSpeedPrefsItem = storage.defineItem<VideoSpeedPrefs>(
+  "sync:videoSpeed.prefs",
   {
     fallback: {
-      speed: 2.5,
-      auto: false,
+      quickSpeed: 2.5,
       typicalRate: 4.5,
       minRate: 0.75,
       maxRate: 3.5,

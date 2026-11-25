@@ -9,7 +9,7 @@ A Chrome extension of small, independent features for my own browsing. Each feat
 ## Features
 
 - **Gmail natural-language snooze.** Type "tomorrow 9am" or "next Monday" into Gmail's snooze menu instead of using the date picker.
-- **Video speed.** A floating widget on any page with video or audio that measures how fast the speaker talks and adjusts playback speed to hit a target rate, with quick relative-speed presets.
+- **Video speed.** Pick a speed from the toolbar button. Every page starts at true 1×; any faster speed is relative, adjusting playback to how fast the speaker talks so everyone lands at the same pace (a "fixed speed" checkbox gives a plain rate instead). While sped up, a small draggable pill on the page shows the actual playback rate and quick speed choices.
 
 ## Daily use
 
