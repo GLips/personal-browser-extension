@@ -12,6 +12,7 @@ import {
   SPEED_STEP,
   type SpeedMode,
 } from "./settings";
+import { formatDuration } from "./time-saved";
 
 const DRAG_THRESHOLD_PX = 4;
 
@@ -101,7 +102,10 @@ export function VideoSpeedPill(props: PillProps) {
   const hidden = props.visible.value ? "" : " hidden";
   const mode = session.mode.value;
   const speed = session.speed.value;
-  const rate = session.playbackRate.value;
+  // During a silence boost, keep showing the speech rate: the big number
+  // shouldn't flicker to 4× on every pause.
+  const boosting = session.boosting.value;
+  const rate = boosting ? session.speechRate.value : session.playbackRate.value;
   const status = session.status.value;
   const replaying = session.replaying.value;
   const dot = <span class={`dot ${dotClass(mode, status)}`} />;
@@ -147,6 +151,7 @@ export function VideoSpeedPill(props: PillProps) {
           }
         >
           {formatRate(rate)}
+          {boosting && <span class="boost">⏩</span>}
         </span>
         <button
           type="button"
@@ -156,17 +161,22 @@ export function VideoSpeedPill(props: PillProps) {
         >
           {SKIP_SECONDS}s<span class="icon">⟳</span>
         </button>
-        <span
+        <button
+          type="button"
           class="mode"
+          aria-pressed={mode === "fixed"}
           title={
             mode === "relative"
-              ? "Relative: speed follows how fast the speaker talks"
-              : "Fixed playback rate"
+              ? "Relative: speed follows how fast the speaker talks. Click for a fixed rate."
+              : "Fixed playback rate. Click to follow the speaker (relative)."
+          }
+          onClick={() =>
+            session.setControl({ fixedOverride: mode === "relative" })
           }
         >
           {dot}
           {mode === "relative" ? "Relative" : "Fixed"}
-        </span>
+        </button>
         <button
           type="button"
           class="collapse"
@@ -205,6 +215,7 @@ export function VideoSpeedPill(props: PillProps) {
         </button>
       </div>
       {mode === "relative" && <RelativeStatus session={session} />}
+      <SavedLine session={session} />
     </div>
   );
 }
@@ -240,6 +251,12 @@ function RelativeStatus({ session }: { session: VideoSpeedSession }) {
       );
     }
   }
+}
+
+function SavedLine({ session }: { session: VideoSpeedSession }) {
+  const saved = session.savedThisVideo.value;
+  if (saved < 30) return null;
+  return <div class="status saved">Saved {formatDuration(saved)}</div>;
 }
 
 function dotClass(mode: SpeedMode, status: DetectionStatus): string {

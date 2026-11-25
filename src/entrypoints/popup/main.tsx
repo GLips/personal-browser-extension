@@ -14,6 +14,14 @@ import {
   SPEED_CHOICES,
   SPEED_STEP,
 } from "../../features/video-speed/settings";
+import {
+  daySecondsFor,
+  formatClock,
+  formatDuration,
+  localDay,
+  type TimeSavedTotals,
+  timeSavedItem,
+} from "../../features/video-speed/time-saved";
 import "./style.css";
 
 // Frequent enough that the playing rate looks live while the popup is open;
@@ -78,9 +86,15 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
   return (
     <main>
       <div class={snapshot.replaying ? "rate replaying" : "rate"}>
-        {formatRate(snapshot.playbackRate)}
+        {formatRate(shownRate(snapshot))}
+        {snapshot.boosting && (
+          <span class="boost" title="Playing a pause fast">
+            ⏩
+          </span>
+        )}
       </div>
       <div class="detail">{detailText(snapshot)}</div>
+      <TimeSaved snapshot={snapshot} />
       <div class="skips">
         <button
           type="button"
@@ -134,6 +148,14 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
       <label class="override">
         <input
           type="checkbox"
+          checked={snapshot.skipSilences}
+          onChange={(e) => control({ skipSilences: e.currentTarget.checked })}
+        />
+        Speed through silences (pauses play at 4× while sped up)
+      </label>
+      <label class="override">
+        <input
+          type="checkbox"
           checked={snapshot.fixedOverride}
           onChange={(e) => control({ fixedOverride: e.currentTarget.checked })}
         />
@@ -141,6 +163,39 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
       </label>
       <ShortcutHint />
     </main>
+  );
+}
+
+/**
+ * The rate to show: during a silence boost, the speech rate, so the big
+ * number doesn't flicker to 4× on every pause.
+ */
+function shownRate(s: VideoSpeedSnapshot): number {
+  return s.boosting ? s.speechRate : s.playbackRate;
+}
+
+function TimeSaved({ snapshot }: { snapshot: VideoSpeedSnapshot }) {
+  const [totals, setTotals] = useState<TimeSavedTotals | undefined>();
+  useEffect(() => {
+    void timeSavedItem.getValue().then(setTotals);
+    return timeSavedItem.watch(setTotals);
+  }, []);
+  const remaining = snapshot.duration - snapshot.currentTime;
+  const endsIn = Number.isFinite(remaining)
+    ? `Ends in ${formatClock(remaining / shownRate(snapshot))}${shownRate(snapshot) === 1 ? "" : " at this speed"}`
+    : undefined;
+  // The page flushes its seconds every 15 s; until then they're only in
+  // the snapshot's per-video count, so today/all-time can trail slightly.
+  const today = totals ? daySecondsFor(totals, localDay()) : 0;
+  return (
+    <div class="saved">
+      {endsIn && <div>{endsIn}</div>}
+      <div>
+        Saved {formatDuration(snapshot.savedThisVideo)} on this video ·{" "}
+        {formatDuration(today)} today ·{" "}
+        {formatDuration(totals?.allTimeSeconds ?? 0)} all time
+      </div>
+    </div>
   );
 }
 
@@ -168,7 +223,9 @@ function ShortcutHint() {
 
 function detailText(s: VideoSpeedSnapshot): string {
   const text = baseDetailText(s);
-  return s.replaying ? `${text} · replaying slower` : text;
+  if (s.replaying) return `${text} · replaying slower`;
+  if (s.boosting) return `${text} · skipping a pause`;
+  return text;
 }
 
 function baseDetailText(s: VideoSpeedSnapshot): string {

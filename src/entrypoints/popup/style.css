@@ -95,3 +95,16 @@ button:hover {
   cursor: pointer;
   text-decoration: underline;
 }
+.rate .boost {
+  margin-left: 8px;
+  font-size: 18px;
+  vertical-align: middle;
+  opacity: 0.7;
+}
+.saved {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}

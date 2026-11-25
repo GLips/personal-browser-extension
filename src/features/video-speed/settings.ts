@@ -41,6 +41,12 @@ export const videoSpeedPrefsItem = storage.defineItem<VideoSpeedPrefs>(
   },
 );
 
+/** Play pauses between sentences fast while sped up (any speed but 1×). */
+export const skipSilencesItem = storage.defineItem<boolean>(
+  "sync:videoSpeed.skipSilences",
+  { fallback: true },
+);
+
 /** Pill position as fractions of the free space, so it survives window resizes. */
 export type PillPosition = { x: number; y: number };
 

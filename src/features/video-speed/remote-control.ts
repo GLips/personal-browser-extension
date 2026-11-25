@@ -25,6 +25,15 @@ export type VideoSpeedSnapshot = {
   status: DetectionStatus;
   speakerRate: number | undefined;
   confidence: number;
+  /** A pause is playing at the silence rate right now. */
+  boosting: boolean;
+  /** The rate chosen for speech, which a silence boost exceeds. */
+  speechRate: number;
+  skipSilences: boolean;
+  savedThisVideo: number;
+  /** NaN or Infinity for live streams. */
+  duration: number;
+  currentTime: number;
 };
 
 export type VideoSpeedRequest =
@@ -56,6 +65,12 @@ export function snapshotSession(
     status: session.status.peek(),
     speakerRate: session.speakerRate.peek(),
     confidence: session.confidence.peek(),
+    boosting: session.boosting.peek(),
+    speechRate: session.speechRate.peek(),
+    skipSilences: session.skipSilences.peek(),
+    savedThisVideo: session.savedThisVideo.peek(),
+    duration: media?.duration ?? Number.NaN,
+    currentTime: media?.currentTime ?? 0,
   };
 }
 
