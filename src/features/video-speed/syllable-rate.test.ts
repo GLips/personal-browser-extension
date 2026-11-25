@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { SyllableRateEstimator } from "./syllable-rate";
 
-const FRAME = 0.01;
+const FRAME = 0.005;
 
 /**
  * Speech-like envelope: raised-cosine bursts at `rate` syllables per media
@@ -38,17 +38,20 @@ describe("SyllableRateEstimator", () => {
     expect(confidence).toBeGreaterThan(0.9);
   });
 
-  test("reports the speaker's natural rate while playing fast", () => {
-    const estimator = new SyllableRateEstimator();
-    feed(estimator, 5, 2.5, 15);
-    const { syllablesPerSecond } = estimator.estimate();
-    expect(Math.abs(syllablesPerSecond - 5) / 5).toBeLessThan(0.15);
-  });
+  test.each([2, 3])(
+    "reports the natural rate while playing at %p×",
+    (playbackRate) => {
+      const estimator = new SyllableRateEstimator();
+      feed(estimator, 5, playbackRate, 15);
+      const { syllablesPerSecond } = estimator.estimate();
+      expect(Math.abs(syllablesPerSecond - 5) / 5).toBeLessThan(0.12);
+    },
+  );
 
   test("tells a source of exact zeros apart from quiet audio", () => {
     const silent = new SyllableRateEstimator();
     const quiet = new SyllableRateEstimator();
-    for (let i = 0; i < 500; i++) {
+    for (let i = 0; i < 1000; i++) {
       silent.push({ rms: 0, wallSeconds: FRAME, playbackRate: 1 });
       quiet.push({ rms: 0.001, wallSeconds: FRAME, playbackRate: 1 });
     }

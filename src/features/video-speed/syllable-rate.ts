@@ -43,7 +43,7 @@ const MAX_BUCKETS = 240;
 type Bucket = { syllables: number; speechSeconds: number };
 
 export class SyllableRateEstimator {
-  private smoothed: number[] = [];
+  private smoothed: { db: number; mediaSeconds: number }[] = [];
   private floorDb = 0;
   private hasFloor = false;
   private prevDb = Number.NEGATIVE_INFINITY;
@@ -68,7 +68,7 @@ export class SyllableRateEstimator {
       this.silentWallSeconds = 0;
     }
 
-    const db = smoothDb(this.smoothed, toDb(frame.rms));
+    const db = smoothDb(this.smoothed, toDb(frame.rms), mediaSeconds);
     this.trackFloor(db, frame.wallSeconds);
     const inSpeech =
       db > MIN_SPEECH_DB && db > this.floorDb + SPEECH_ABOVE_FLOOR_DB;
@@ -160,10 +160,22 @@ function toDb(rms: number): number {
   return 20 * Math.log10(rms + 1e-10);
 }
 
-// Three-frame moving average: irons out single-frame wobble that would
-// otherwise read as extra syllables.
-function smoothDb(history: number[], db: number): number {
-  history.push(db);
-  if (history.length > 3) history.shift();
-  return history.reduce((sum, value) => sum + value, 0) / history.length;
+// Moving average over a fixed span of media time: irons out wobble within a
+// syllable without blurring neighbouring syllables together at high speed.
+const SMOOTHING_MEDIA_SECONDS = 0.03;
+
+function smoothDb(
+  history: { db: number; mediaSeconds: number }[],
+  db: number,
+  mediaSeconds: number,
+): number {
+  history.push({ db, mediaSeconds });
+  let span = history.reduce((sum, frame) => sum + frame.mediaSeconds, 0);
+  while (
+    history.length > 1 &&
+    span - (history[0]?.mediaSeconds ?? 0) >= SMOOTHING_MEDIA_SECONDS
+  ) {
+    span -= history.shift()?.mediaSeconds ?? 0;
+  }
+  return history.reduce((sum, frame) => sum + frame.db, 0) / history.length;
 }

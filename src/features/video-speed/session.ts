@@ -202,14 +202,18 @@ export class VideoSpeedSession {
 
   private poll(media: HTMLMediaElement) {
     const now = performance.now();
-    const wallSeconds = (now - this.lastPoll) / 1000;
-    this.lastPoll = now;
+    const elapsed = (now - this.lastPoll) / 1000;
     if (!this.tap) return;
-    this.estimator.push({
-      rms: this.tap.readRms(),
-      wallSeconds,
-      playbackRate: media.playbackRate,
-    });
+    const blocks = this.tap.readBlocks(elapsed);
+    // Advance only by what was consumed, so leftover samples join the next poll.
+    this.lastPoll += blocks.length * (blocks[0]?.seconds ?? 0) * 1000;
+    for (const block of blocks) {
+      this.estimator.push({
+        rms: block.rms,
+        wallSeconds: block.seconds,
+        playbackRate: media.playbackRate,
+      });
+    }
   }
 
   private control(media: HTMLMediaElement) {

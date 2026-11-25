@@ -13,12 +13,18 @@ export class AudioUnavailableError extends Error {}
 
 export type AudioTap = {
   context: AudioContext;
-  /** RMS of the latest ~10 ms of speech-band audio. */
-  readRms(): number;
+  /**
+   * Loudness of the audio heard over the last `elapsedSeconds`, as RMS per
+   * 5 ms block. Slicing the analyser buffer, rather than taking one reading
+   * per timer tick, keeps syllable peaks sharp however late the timer fires.
+   */
+  readBlocks(elapsedSeconds: number): { rms: number; seconds: number }[];
   dispose(): void;
 };
 
 type CapturableMedia = HTMLMediaElement & { captureStream?: () => MediaStream };
+
+const BLOCK_SECONDS = 0.005;
 
 let sharedContext: AudioContext | undefined;
 const elementSources = new WeakMap<
@@ -41,21 +47,41 @@ export function tapMediaAudio(media: HTMLMediaElement): AudioTap {
     type: "lowpass",
     frequency: 3000,
   });
+  // ~43 ms at 48 kHz: covers a poll interval with room for timer lateness.
   const analyser = new AnalyserNode(context, {
-    fftSize: 512,
+    fftSize: 2048,
     smoothingTimeConstant: 0,
   });
   highpass.connect(lowpass).connect(analyser);
   const detach = connectSource(context, media as CapturableMedia, highpass);
   const buffer = new Float32Array(analyser.fftSize);
+  const blockSize = Math.round(context.sampleRate * BLOCK_SECONDS);
 
   return {
     context,
-    readRms() {
+    readBlocks(elapsedSeconds) {
       analyser.getFloatTimeDomainData(buffer);
-      let sum = 0;
-      for (const sample of buffer) sum += sample * sample;
-      return Math.sqrt(sum / buffer.length);
+      const fresh = Math.min(
+        buffer.length,
+        Math.round(elapsedSeconds * context.sampleRate),
+      );
+      const blocks: { rms: number; seconds: number }[] = [];
+      for (
+        let start = buffer.length - fresh;
+        start + blockSize <= buffer.length;
+        start += blockSize
+      ) {
+        let sum = 0;
+        for (let i = start; i < start + blockSize; i++) {
+          const sample = buffer[i] as number;
+          sum += sample * sample;
+        }
+        blocks.push({
+          rms: Math.sqrt(sum / blockSize),
+          seconds: blockSize / context.sampleRate,
+        });
+      }
+      return blocks;
     },
     dispose() {
       detach();
