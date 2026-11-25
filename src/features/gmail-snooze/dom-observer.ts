@@ -1,6 +1,8 @@
 import { SNOOZE_MENU_SELECTOR } from "./snooze-actions";
 
-export function observeSnoozeMenu(onMenuFound: (menu: HTMLElement) => void) {
+export function observeSnoozeMenu(
+  onMenuFound: (menu: HTMLElement) => void,
+): () => void {
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === "childList") {
@@ -35,6 +37,8 @@ export function observeSnoozeMenu(onMenuFound: (menu: HTMLElement) => void) {
   if (existingMenu) {
     onMenuFound(existingMenu);
   }
+
+  return () => observer.disconnect();
 }
 
 function isSnoozeMenu(element: HTMLElement): boolean {

@@ -44,23 +44,27 @@ The easiest way to install is to download the pre-built extension from GitHub Re
 If you want to build the extension yourself:
 
 **Prerequisites:**
+
 - [Bun](https://bun.sh/) - Fast JavaScript runtime and toolkit
 - Google Chrome or any Chromium-based browser
 
 **Build steps:**
 
 1. Clone or download this repository:
+
    ```bash
    git clone https://github.com/GLips/gmail-natural-language-snooze.git
    cd gmail-natural-language-snooze
    ```
 
 2. Install dependencies:
+
    ```bash
    bun install
    ```
 
 3. Build the extension:
+
    ```bash
    bun run build
    ```
@@ -110,21 +114,25 @@ If you want to build the extension yourself:
 ## Development
 
 ### Type Checking
+
 ```bash
 bun run typecheck
 ```
 
 ### Linting
+
 ```bash
 bun run lint
 ```
 
 ### Testing
+
 ```bash
 bun test
 ```
 
 ### Rebuild After Changes
+
 ```bash
 bun run build
 ```
@@ -145,6 +153,7 @@ src/content/
 ```
 
 The extension works by:
+
 1. Observing Gmail's DOM for the snooze menu
 2. Injecting a natural language input field
 3. Parsing user input with chrono-node
@@ -162,16 +171,19 @@ The extension works by:
 ## Troubleshooting
 
 ### Extension doesn't appear
+
 - Verify you're on `mail.google.com`
 - Check that the extension is enabled in `chrome://extensions/`
 - Try refreshing the Gmail tab
 
 ### Date parsing isn't working
+
 - Ensure your input is unambiguous ("tomorrow 9am" vs just "tomorrow")
 - Try more explicit dates ("Jan 10 2026" vs "soon")
 - The extension uses future dates by default
 
 ### Modal automation fails
+
 - Gmail's UI may have changed
 - Try clicking the "Pick date & time" option manually
 - Check the browser console for errors
@@ -189,11 +201,13 @@ To create a new release with a pre-built extension zip:
 ```
 
 Example:
+
 ```bash
 ./release.sh 1.1.0
 ```
 
 This will:
+
 1. Build the extension
 2. Create a zip archive
 3. Create a GitHub release with the zip file attached

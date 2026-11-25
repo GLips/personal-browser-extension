@@ -1,7 +1,9 @@
 plan.md
 progress.txt
 node_modules
-dist
+.agent_cache
 .DS_Store
 .env
 *.zip
+.output
+.wxt
