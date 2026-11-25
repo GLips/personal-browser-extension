@@ -1,218 +1,46 @@
-# Gmail Snooze Natural-Language Input
+<p align="center">
+  <img src="assets/logo.svg" width="96" height="96" alt="Personal Browser Extension logo: two slider knobs on an orange tile">
+</p>
 
-A Chrome extension that enhances Gmail's snooze feature with a keyboard-first, natural language input field. Instead of clicking through Gmail's date picker, simply type "tomorrow 9am" or "next Monday" and press Enter.
+# Personal Browser Extension
+
+A Chrome extension of small, independent features for my own browsing. Each feature lives in its own module, runs only on the sites it needs, and can be switched off from the options page. It is loaded unpacked and never published.
 
 ## Features
 
-- **Natural Language Input**: Type human-readable expressions like "tomorrow 9am", "next Monday", "in 3 hours"
-- **Real-Time Preview**: See the parsed date/time as you type
-- **Smart UI Injection**: Automatically appears when you open Gmail's snooze menu
-- **Locale-Aware**: Adapts to your Gmail date/time format settings
-- **Keyboard-First**: Press Enter to confirm, Escape to cancel
-- **Success Notifications**: Toast confirmation with scheduled date/time
-- **Non-Intrusive**: Works alongside Gmail's native functionality without breaking it
+- **Gmail natural-language snooze.** Type "tomorrow 9am" or "next Monday" into Gmail's snooze menu instead of using the date picker.
+- **Video speed.** A floating widget on any page with video or audio that measures how fast the speaker talks and adjusts playback speed to hit a target rate, with quick relative-speed presets.
 
-## Supported Natural Language Examples
+## Daily use
 
-- **Relative times**: "in 3 hours", "in 2 days", "in 30 minutes"
-- **Named days**: "tomorrow", "next Monday", "this Friday"
-- **Time of day**: "tomorrow 9am", "next Tuesday 2:30pm"
-- **Casual expressions**: "this afternoon", "tonight", "next week"
-- **Specific dates**: "Jan 10", "January 15th 2026"
-- **Combined**: "next Monday at 8:30am", "tomorrow morning"
-
-## Installation
-
-### Option 1: Install Pre-built Extension (Recommended)
-
-The easiest way to install is to download the pre-built extension from GitHub Releases:
-
-1. **Download the extension**
-   - Go to the [latest release](https://github.com/GLips/gmail-natural-language-snooze/releases/latest)
-   - Download `gmail-snooze-extension-v1.0.0.zip`
-   - Unzip the file to a folder on your computer
-
-2. **Load in Chrome**
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode" using the toggle in the top-right corner
-   - Click "Load unpacked"
-   - Select the unzipped folder
-   - The extension is now installed!
-
-### Option 2: Build from Source
-
-If you want to build the extension yourself:
-
-**Prerequisites:**
-
-- [Bun](https://bun.sh/) - Fast JavaScript runtime and toolkit
-- Google Chrome or any Chromium-based browser
-
-**Build steps:**
-
-1. Clone or download this repository:
-
-   ```bash
-   git clone https://github.com/GLips/gmail-natural-language-snooze.git
-   cd gmail-natural-language-snooze
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   bun install
-   ```
-
-3. Build the extension:
-
-   ```bash
-   bun run build
-   ```
-
-   This creates a `dist/` directory with the bundled extension files.
-
-4. Load in Chrome:
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode" using the toggle in the top-right corner
-   - Click "Load unpacked"
-   - Select the `dist/` directory from this project
-   - The extension is now installed!
-
-### Verify Installation
-
-1. Go to [Gmail](https://mail.google.com/)
-2. Open any email
-3. Click the snooze icon (clock icon in the toolbar)
-4. You should see a natural language input field appear above the snooze menu
-5. Type "tomorrow 9am" and press Enter
-
-## Usage
-
-1. **Open Gmail** and select an email
-2. **Click the snooze icon** (or press 'b' if you use keyboard shortcuts)
-3. **Type a natural language time** in the input field that appears
-   - Example: "tomorrow 9am"
-   - You'll see a preview of the parsed date below
-4. **Press Enter** to snooze the email
-5. **See a confirmation toast** with the scheduled date/time
-
-### Tips
-
-- The extension validates that dates are in the future
-- If the input can't be parsed, you'll see an error message
-- Press Escape to dismiss the input and use Gmail's native picker instead
-- The extension adapts to your Gmail locale settings automatically
-
-## Tech Stack
-
-- **TypeScript** - Type-safe development
-- **Bun** - Fast build and runtime
-- **chrono-node** - Natural language date parsing
-- **date-fns** - Date formatting
-- **Chrome Extension Manifest V3** - Modern extension API
-
-## Development
-
-### Type Checking
-
-```bash
-bun run typecheck
-```
-
-### Linting
-
-```bash
-bun run lint
-```
-
-### Testing
-
-```bash
-bun test
-```
-
-### Rebuild After Changes
-
-```bash
+```sh
+bun install
 bun run build
 ```
 
-After rebuilding, go to `chrome://extensions/` and click the refresh icon on the extension card to reload it.
+In `chrome://extensions`, turn on Developer mode, click **Load unpacked**, and pick `.output/chrome-mv3`. After a rebuild, click the extension's reload button.
 
-## Architecture
+## Development
 
-```
-src/content/
-├── content-script.ts      # Entry point
-├── dom-observer.ts        # Watches for snooze menu
-├── ui-injector.ts         # Creates natural language input UI
-├── date-parser.ts         # Parses natural language to Date
-├── snooze-actions.ts      # Interacts with Gmail's snooze menu
-├── modal-handler.ts       # Fills date/time in Gmail's modal
-└── toast.ts               # Success notification
+```sh
+bun run dev
 ```
 
-The extension works by:
+Load `.output/chrome-mv3-dev` unpacked the same way. It shows up as **Personal Browser Extension (dev)** and reloads itself, and any open tabs it runs in, whenever a file changes, as long as `bun run dev` is running. Its options page needs the dev server, so don't use the dev copy day to day.
 
-1. Observing Gmail's DOM for the snooze menu
-2. Injecting a natural language input field
-3. Parsing user input with chrono-node
-4. Automating Gmail's native "Pick date & time" modal
-5. Showing a success notification
+Keep only one of the two copies enabled at a time; with both on, every feature runs twice. Chrome gives each copy its own extension ID, so settings don't carry between them.
 
-## Privacy & Security
+## Layout
 
-- No external API calls
-- No data collection or tracking
-- Minimal permissions (activeTab only)
-- Never reads or modifies email content
-- All processing happens locally in your browser
+- `src/entrypoints/`: thin WXT entrypoints. Each content script declares its own match patterns and starts one feature.
+- `src/features/<name>/`: each feature's code, framework-independent where possible.
+- `src/platform/`: shared pieces, such as per-feature on/off settings synced through `chrome.storage.sync`.
+- `assets/logo.svg`: the logo master; `assets/logo-16.svg` is a pixel-fitted version for the 16 px toolbar icon. `public/icon/` holds the rendered PNGs.
 
-## Troubleshooting
+## Checks
 
-### Extension doesn't appear
-
-- Verify you're on `mail.google.com`
-- Check that the extension is enabled in `chrome://extensions/`
-- Try refreshing the Gmail tab
-
-### Date parsing isn't working
-
-- Ensure your input is unambiguous ("tomorrow 9am" vs just "tomorrow")
-- Try more explicit dates ("Jan 10 2026" vs "soon")
-- The extension uses future dates by default
-
-### Modal automation fails
-
-- Gmail's UI may have changed
-- Try clicking the "Pick date & time" option manually
-- Check the browser console for errors
-
-## Contributing
-
-Feel free to fork, modify, and improve this extension. The codebase is well-structured and TypeScript makes it easy to understand and extend.
-
-### Creating a Release
-
-To create a new release with a pre-built extension zip:
-
-```bash
-./release.sh <version>
+```sh
+bun run typecheck
+bun run lint
+bun run test
 ```
-
-Example:
-
-```bash
-./release.sh 1.1.0
-```
-
-This will:
-
-1. Build the extension
-2. Create a zip archive
-3. Create a GitHub release with the zip file attached
-4. Generate release notes automatically
-
-## License
-
-This project is open source and available for personal use. Not affiliated with Google or Gmail.
