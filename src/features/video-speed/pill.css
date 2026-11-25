@@ -1,0 +1,94 @@
+:host {
+  all: initial;
+}
+.pill {
+  position: fixed;
+  z-index: 2147483647;
+  display: grid;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: rgb(20 20 22 / 0.82);
+  color: #f2f2f2;
+  font:
+    12px / 1.2 system-ui,
+    -apple-system,
+    sans-serif;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.3);
+  backdrop-filter: blur(6px);
+  user-select: none;
+  touch-action: none;
+  opacity: 0.55;
+  transition: opacity 120ms ease;
+}
+.pill:hover,
+.pill:focus-within {
+  opacity: 1;
+}
+.pill.collapsed {
+  padding: 0;
+  border-radius: 999px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+button {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+button:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+button:focus-visible {
+  outline: 2px solid #7ab7ff;
+}
+.pill.collapsed button {
+  padding: 5px 10px;
+  cursor: grab;
+}
+.auto.on,
+.chip.on {
+  background: rgb(122 183 255 / 0.28);
+}
+.grip {
+  cursor: grab;
+  padding: 0 2px;
+  opacity: 0.6;
+}
+.speed {
+  min-width: 3.4em;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.collapse {
+  margin-left: auto;
+}
+.status {
+  opacity: 0.75;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #888;
+}
+.dot.listening {
+  background: #5ad17a;
+}
+.dot.waiting {
+  background: #e6c34a;
+}
+.dot.unavailable {
+  background: #e26a5a;
+}
