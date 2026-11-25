@@ -6,7 +6,12 @@ import {
 import { useRef } from "preact/hooks";
 import { SKIP_SECONDS } from "./catch-up";
 import type { DetectionStatus, VideoSpeedSession } from "./session";
-import { type PillPosition, SPEED_CHOICES, type SpeedMode } from "./settings";
+import {
+  type PillPosition,
+  SPEED_CHOICES,
+  SPEED_STEP,
+  type SpeedMode,
+} from "./settings";
 
 const DRAG_THRESHOLD_PX = 4;
 
@@ -132,7 +137,8 @@ export function VideoSpeedPill(props: PillProps) {
           title={`Back ${SKIP_SECONDS}s, replayed slower with captions`}
           onClick={() => session.skip(-SKIP_SECONDS)}
         >
-          ⟲{SKIP_SECONDS}
+          <span class="icon">⟲</span>
+          {SKIP_SECONDS}s
         </button>
         <span
           class={replaying ? "rate replaying" : "rate"}
@@ -148,7 +154,7 @@ export function VideoSpeedPill(props: PillProps) {
           title={`Forward ${SKIP_SECONDS}s`}
           onClick={() => session.skip(SKIP_SECONDS)}
         >
-          {SKIP_SECONDS}⟳
+          {SKIP_SECONDS}s<span class="icon">⟳</span>
         </button>
         <span
           class="mode"
@@ -171,6 +177,14 @@ export function VideoSpeedPill(props: PillProps) {
         </button>
       </div>
       <div class="row chips">
+        <button
+          type="button"
+          class="step"
+          title={`Slower by ${SPEED_STEP}`}
+          onClick={() => session.setControl({ speed: speed - SPEED_STEP })}
+        >
+          −
+        </button>
         {SPEED_CHOICES.map((choice) => (
           <button
             type="button"
@@ -181,6 +195,14 @@ export function VideoSpeedPill(props: PillProps) {
             {formatRate(choice)}
           </button>
         ))}
+        <button
+          type="button"
+          class="step"
+          title={`Faster by ${SPEED_STEP}`}
+          onClick={() => session.setControl({ speed: speed + SPEED_STEP })}
+        >
+          +
+        </button>
       </div>
       {mode === "relative" && <RelativeStatus session={session} />}
     </div>

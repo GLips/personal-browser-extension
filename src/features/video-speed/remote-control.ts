@@ -35,7 +35,8 @@ export type VideoSpeedRequest =
       sessionId: string;
       patch: SpeedControlPatch;
     }
-  | { type: "videoSpeed/skip"; sessionId: string; seconds: number };
+  | { type: "videoSpeed/skip"; sessionId: string; seconds: number }
+  | { type: "videoSpeed/toggle"; sessionId: string };
 
 const PAUSED_FRAME_DELAY_MS = 150;
 
@@ -87,11 +88,34 @@ export function serveRemoteControl(
     if (request.sessionId !== session.id) return false;
     if (request.type === "videoSpeed/set") session.setControl(request.patch);
     if (request.type === "videoSpeed/skip") session.skip(request.seconds);
+    if (request.type === "videoSpeed/toggle") session.toggleSpeedUp();
     sendResponse(snapshotSession(session));
     return false;
   };
   browser.runtime.onMessage.addListener(listener);
   return () => browser.runtime.onMessage.removeListener(listener);
+}
+
+/**
+ * Background side, for keyboard commands: finds the tab's active media frame
+ * the same way the popup does, then sends it the command.
+ */
+export async function sendVideoSpeedCommand(
+  tabId: number,
+  command: { type: "toggle" } | { type: "skip"; seconds: number },
+): Promise<void> {
+  const found = await requestVideoSpeed(tabId, { type: "videoSpeed/find" });
+  if (!found) return;
+  await requestVideoSpeed(
+    tabId,
+    command.type === "toggle"
+      ? { type: "videoSpeed/toggle", sessionId: found.sessionId }
+      : {
+          type: "videoSpeed/skip",
+          sessionId: found.sessionId,
+          seconds: command.seconds,
+        },
+  );
 }
 
 /** Popup side. Resolves to undefined when no frame in the tab has media. */

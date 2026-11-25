@@ -9,7 +9,11 @@ import {
   type VideoSpeedSnapshot,
 } from "../../features/video-speed/remote-control";
 import type { SpeedControlPatch } from "../../features/video-speed/session";
-import { SPEED_CHOICES, SPEED_STEP } from "../../features/video-speed/settings";
+import {
+  HOTKEY_SPEED,
+  SPEED_CHOICES,
+  SPEED_STEP,
+} from "../../features/video-speed/settings";
 import "./style.css";
 
 // Frequent enough that the playing rate looks live while the popup is open;
@@ -45,6 +49,7 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
     return (
       <main>
         <p class="empty">No video or audio on this page.</p>
+        <ShortcutHint />
       </main>
     );
   }
@@ -134,7 +139,30 @@ function VideoSpeedPopup({ tabId }: { tabId: number }) {
         />
         Fixed speed (ignore how fast the speaker talks)
       </label>
+      <ShortcutHint />
     </main>
+  );
+}
+
+function ShortcutHint() {
+  const [toggleKey, setToggleKey] = useState<string | undefined>();
+  useEffect(() => {
+    void browser.commands.getAll().then((commands) => {
+      const toggle = commands.find((c) => c.name === "video-speed-toggle");
+      setToggleKey(toggle?.shortcut || undefined);
+    });
+  }, []);
+  // chrome:// links can't be opened by a plain anchor from an extension page.
+  const openShortcuts = () =>
+    void browser.tabs.create({ url: "chrome://extensions/shortcuts" });
+  return (
+    <p class="hint">
+      {toggleKey ? `${toggleKey} toggles ${HOTKEY_SPEED}× / 1×. ` : ""}
+      <button type="button" class="link" onClick={openShortcuts}>
+        Set shortcuts
+      </button>{" "}
+      (incl. skip back/forward)
+    </p>
   );
 }
 

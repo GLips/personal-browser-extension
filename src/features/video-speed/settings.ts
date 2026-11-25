@@ -26,6 +26,8 @@ export const HARD_MAX_RATE = 4;
 
 export const SPEED_CHOICES = [1, 1.5, 2, 2.5, 3];
 export const SPEED_STEP = 0.1;
+/** The speed the toggle hotkey jumps to from 1×. */
+export const HOTKEY_SPEED = 3;
 
 export const videoSpeedPrefsItem = storage.defineItem<VideoSpeedPrefs>(
   "sync:videoSpeed.prefs",

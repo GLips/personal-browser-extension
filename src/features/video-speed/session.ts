@@ -22,6 +22,7 @@ import {
 import { showCaptionsDuringReplay } from "./replay-captions";
 import {
   HARD_MAX_RATE,
+  HOTKEY_SPEED,
   type SpeedMode,
   type VideoSpeedPrefs,
   videoSpeedPrefsItem,
@@ -136,6 +137,11 @@ export class VideoSpeedSession {
         void videoSpeedPrefsItem.setValue(prefs);
       }
     }
+  }
+
+  /** The hotkey: 1× jumps to the hotkey speed, anything else back to 1×. */
+  toggleSpeedUp() {
+    this.setControl({ speed: this.speed.peek() === 1 ? HOTKEY_SPEED : 1 });
   }
 
   /** Jumps by `seconds`; a jump back replays that stretch slower. */

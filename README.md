@@ -9,7 +9,7 @@ A Chrome extension of small, independent features for my own browsing. Each feat
 ## Features
 
 - **Gmail natural-language snooze.** Type "tomorrow 9am" or "next Monday" into Gmail's snooze menu instead of using the date picker.
-- **Video speed.** Pick a speed from the toolbar button. Every page starts at true 1×; any faster speed is relative, adjusting playback to how fast the speaker talks so everyone lands at the same pace (a "fixed speed" checkbox gives a plain rate instead). While sped up, a small draggable pill on the page shows the actual playback rate and quick speed choices.
+- **Video speed.** Pick a speed from the toolbar button. Every page starts at true 1×; any faster speed is relative, adjusting playback to how fast the speaker talks so everyone lands at the same pace (a "fixed speed" checkbox gives a plain rate instead). While sped up, a small draggable pill on the page shows the actual playback rate, quick speed choices with −/+, and ⟲/⟳ 10s skips (a skip back replays that stretch slower, with captions). ⌘⇧L (Ctrl+Shift+L elsewhere) toggles 3× relative / 1×; skip back/forward have commands you can bind at `chrome://extensions/shortcuts`.
 
 ## Daily use
 
